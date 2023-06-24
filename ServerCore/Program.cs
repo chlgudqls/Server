@@ -32,6 +32,9 @@ namespace ServerCore
 
             Console.WriteLine("Stop 호출");
             Console.WriteLine("종료 대기중");
+            t.Waitf
+            Console.WriteLine("종료 성공");
+
         }
     }
 }
