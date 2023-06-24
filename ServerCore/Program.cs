@@ -27,6 +27,14 @@ namespace ServerCore
             t.Start();
 
             Thread.Sleep(1000);
+
+            _stop = true;
+
+            Console.WriteLine("Stop 호출");
+            Console.WriteLine("종료 대기중");
+            t.Waitf
+            Console.WriteLine("종료 성공");
+
         }
     }
 }
