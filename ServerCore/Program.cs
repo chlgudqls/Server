@@ -9,35 +9,50 @@ namespace ServerCore
 {
     class Program
     {
-        // 스레드는 각자의 스택을 가지고있으나 전역으로 선언된 스택을 돌려쓸수있다
-        // volatile 최적화를 하지말아달라
-        volatile static bool _stop = false;
 
-        static void ThreadMain()
+        static int x = 0;
+        static int y = 0;
+        static int r1 = 0;
+        static int r2 = 0;
+
+        static void Thread1()
         {
-            Console.WriteLine("쓰레드 시작");
-            while (!_stop)
-            {
-
-            }
-            Console.WriteLine("쓰레드 종료");
+            y = 1;
+            Thread.MemoryBarrier(); // 경계선
+            r1 = x;
         }
+        static void Thread2()
+        {
+            // 이 위아래를 하드웨어에서 바꿔버리는 현상 쿨하게 지멋대로 싱글스레드에선 괜찮지만
+            // 멀티스레드에서 이딴식?으로하면 예상한로직이 완전히 꼬이게된다 그래서 이현상을 막기위해서 메모리베리어를 사용한다
+            // 하드웨어가 지멋대로 최적화시키는걸 강제하는 방법
 
+            x = 1;
+            Thread.MemoryBarrier(); // 경계선
+            r2 = y;
+        }
         // 어쩃든 릴리즈모드를 사용하면 최적화를 하게되는데 컴퓨터가알아서 이상해보이는코드를 고치기때문에 무한루프에 빠질수가있다
         static void Main(string[] args)
         {
-            Task t = new Task(ThreadMain);
-            t.Start();
+            int count = 0;
+            while (true)
+            {
+                count++;
+                x = y = r1 = r2 = 0;
 
-            Thread.Sleep(1000);
+                Task t1 = new Task(Thread1);
+                Task t2 = new Task(Thread2);
 
-            _stop = true;
+                t1.Start();
+                t2.Start();
 
-            Console.WriteLine("Stop 호출");
-            Console.WriteLine("종료 대기중");
-            // 스레드의 Join과 같은 의미 끝날때까지 기다렸다가 실행한다 위의 start가
-            t.Wait();
-            Console.WriteLine("종료 성공");
+                Task.WaitAll(t1, t2);
+
+                if (r1 == 0 && r2 == 0)
+                    break;
+            }
+
+            Console.WriteLine($"{count}번 만에 빠져나옴");
 
         }
     }
