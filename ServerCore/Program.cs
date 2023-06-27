@@ -7,53 +7,77 @@ using System.Threading.Tasks;
 
 namespace ServerCore
 {
-    class Program
+    class SpinLcck
     {
+        volatile int _locked = 0;
 
-        static int x = 0;
-        static int y = 0;
-        static int r1 = 0;
-        static int r2 = 0;
-
-        static void Thread1()
+        // 들어오는 스레드? 이벤트
+        public void Acquire()
         {
-            y = 1;
-            Thread.MemoryBarrier(); // 경계선
-            r1 = x;
-        }
-        static void Thread2()
-        {
-            // 이 위아래를 하드웨어에서 바꿔버리는 현상 쿨하게 지멋대로 싱글스레드에선 괜찮지만
-            // 멀티스레드에서 이딴식?으로하면 예상한로직이 완전히 꼬이게된다 그래서 이현상을 막기위해서 메모리베리어를 사용한다
-            // 하드웨어가 지멋대로 최적화시키는걸 강제하는 방법
-
-            x = 1;
-            Thread.MemoryBarrier(); // 경계선
-            r2 = y;
-        }
-        // 어쩃든 릴리즈모드를 사용하면 최적화를 하게되는데 컴퓨터가알아서 이상해보이는코드를 고치기때문에 무한루프에 빠질수가있다
-        static void Main(string[] args)
-        {
-            int count = 0;
+            // while안에 릴리즈가 들어있고 액콰이어는 대기중이고
             while (true)
             {
-                count++;
-                x = y = r1 = r2 = 0;
+                // 이 이벤트가 잠겨있는게 풀리길 기다리고있는 공간
+                //int original = Interlocked.Exchange(ref _locked, 1);
+                //if (original == 0)
+                //    break;
 
-                Task t1 = new Task(Thread1);
-                Task t2 = new Task(Thread2);
-
-                t1.Start();
-                t2.Start();
-
-                Task.WaitAll(t1, t2);
-
-                if (r1 == 0 && r2 == 0)
+                // 어쨋든 스핀락을 해결하기위해서 _lccked가 0이면 1을 대입
+                // 예상하는값
+                int expected = 0;
+                // 원하는값 알아보기 편하게 변수명지어서 대입
+                int desired = 1;
+                /*int original = */if(Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
+                //if (original == 0)
                     break;
             }
+            // 릴리즈가 나감으로써 갖게됨
+            //_locked = true;
+        }
+        // 나가는 이벤트
+        public void Release()
+        {
+            // 나감
+            _locked = 0;
+        }
+    }
 
-            Console.WriteLine($"{count}번 만에 빠져나옴");
+    class Program
+    {
+        static int _num = 0;
+        static SpinLcck _lock = new SpinLcck();
 
+        static void Thread_1()
+        {
+            for (int i = 0; i < 100000; i++)
+            {
+                // 대기시키는거?num이 실행된이후에 릴리즈가 실행됨으로 소유권을 넘긴다
+                _lock.Acquire();
+                _num++;
+                _lock.Release();
+            }
+        }
+
+        static void Thread_2()
+        {
+            for (int i = 0; i < 100000; i++)
+            {
+                _lock.Acquire();
+                _num--;
+                _lock.Release();
+            }
+        }
+        static void Main(string[] args)
+        {
+            Task t1 = new Task(Thread_1);
+            Task t2 = new Task(Thread_2);
+
+            t1.Start();
+            t2.Start();
+
+            Task.WaitAll(t1, t2);
+
+            Console.WriteLine(_num);
         }
     }
 }
