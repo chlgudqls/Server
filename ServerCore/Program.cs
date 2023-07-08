@@ -17,20 +17,31 @@ namespace ServerCore
         {
             try
             {
-                // 받는다
-                byte[] recvBuff = new byte[1024]; // 보낸게 recvBuff 여기에 저장됨
-                int recvBytes = clientSocket.Receive(recvBuff); // 몇개 짜린지 확인
-                string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes); // string으로 변환
 
-                Console.WriteLine($"[From Client] {recvData}");
+                Session session = new Session();
+                session.Start(clientSocket);
+                
+                byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server  !");
+                session.Send(sendBuff);
 
-                // 보낸다
-                byte[] sendBytes = Encoding.UTF8.GetBytes("Welcome to MMORPG Server  !");
-                clientSocket.Send(sendBytes);  // 여기도 안받으면 대기
+                Thread.Sleep(1000);
 
-                // 쫓아낸다
-                clientSocket.Shutdown(SocketShutdown.Both);
-                clientSocket.Close();
+                session.Disconnent();
+                session.Disconnent();
+                //// 받는다
+                //byte[] recvBuff = new byte[1024]; // 보낸게 recvBuff 여기에 저장됨
+                //int recvBytes = clientSocket.Receive(recvBuff); // 몇개 짜린지 확인
+                //string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes); // string으로 변환
+
+                //Console.WriteLine($"[From Client] {recvData}");
+
+                //// 보낸다
+                //byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server  !");
+                //clientSocket.Send(sendBuff);  // 여기도 안받으면 대기
+
+                //// 쫓아낸다
+                //clientSocket.Shutdown(SocketShutdown.Both);
+                //clientSocket.Close();
             }
             catch (Exception e)
             {
